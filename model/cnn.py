@@ -1,6 +1,6 @@
 import numpy as np
 
-from model.layers import Conv2D, ReLU, MaxPool2D, Linear
+from model.layers import Conv2D, ReLU, MaxPool2D, Linear, Sigmoid
 
 
 class CNN:
@@ -9,12 +9,8 @@ class CNN:
         self.conv = Conv2D(n_filters=8, kernel_size=3)
         self.relu = ReLU()
         self.pool = MaxPool2D(pool_size=2)
-
-        # Classification en 10 classes : chiffres de 0 à 9
-        self.fc = Linear(
-            n_inputs=8 * 13 * 13,
-            n_outputs=10
-        )
+        self.fc = Linear(n_inputs=8*13*13, n_outputs=10)
+        self.sigmoid = Sigmoid()
 
     def forward(self, x):
         # Convolution
@@ -25,14 +21,22 @@ class CNN:
 
         # Réduction des feature maps
         x = self.pool.forward(x)
-
-        # Transformation en vecteur
+        self.pre_flatten_shape = x.shape
         x = x.flatten()
 
         # Classification
         x = self.fc.forward(x)
-
+        x = self.sigmoid.forward(x)
         return x
+
+    def backward(self, dloss_dprob):
+        dx = self.sigmoid.backward(dloss_dprob)
+        dx, dw_fc, db_fc = self.fc.backward(dx)
+        dx = dx.reshape(self.pre_flatten_shape)
+        dx = self.pool.backward(dx)
+        dx = self.relu.backward(dx)
+        dkernels = self.conv.backward(dx)
+        return dkernels, dw_fc, db_fc
 
 
 if __name__ == "__main__":
