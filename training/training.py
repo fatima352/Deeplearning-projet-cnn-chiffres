@@ -21,6 +21,8 @@ import numpy as np
 from model.cnn import CNN
 from torch.utils.data import Subset
 
+np.random.seed(42)
+
 # Petite fonction pour corriger l'orientation des images EMNIST (bug officiel de la lib)
 # Pour les tourner de 90°
 def fix_emnist(image):
@@ -62,8 +64,8 @@ test_data = datasets.EMNIST(
 )
 
 
-train_subset = Subset(train_data, range(5000))
-test_subset = Subset(test_data, range(1000))
+train_subset = Subset(train_data, range(10000))
+test_subset = Subset(test_data, range(2000))
 
 # DataLoader : regroupe les images par paquet de 64
 # DataLoader basés sur ces sous-ensembles minuscules
@@ -76,10 +78,12 @@ test_loader = DataLoader(test_subset, batch_size=64, shuffle=False)
 
 
 # 3. Transformations pour les données personnelles
+# 3. Transformations pour les données personnelles
 perso_transform = transforms.Compose([
     transforms.Grayscale(num_output_channels=1), # Forcer en Noir & Blanc
     transforms.Resize((28, 28)), # Standardiser la taille pour le modèle
     transforms.ToTensor(),
+    transforms.Lambda(lambda x: 1.0 - x), # --- CORRECTION : Inversion des couleurs ---
     transforms.Normalize((0.1307,), (0.3081,)) # Conserver la normalisation EMNIST
 ])
 
@@ -94,7 +98,7 @@ perso_loader = DataLoader(perso_data, batch_size=32, shuffle=False)
 
 # Initialisation du modèle fait maison (NumPy)
 model = CNN()
-learning_rate = 0.001
+learning_rate = 0.01
 
 def train_one_epoch_numpy(model, dataloader, learning_rate):
     running_loss = 0.0
@@ -108,8 +112,8 @@ def train_one_epoch_numpy(model, dataloader, learning_rate):
             label_int = batch_labels[i].item()
 
             # 2. Encodage One-Hot pour la Loss
-            y = np.zeros(10)
-            y[label_int] = 1
+            y = np.full(10, 0.05)  # On met 0.05 partout
+            y[label_int] = 0.95    # On met 0.95 pour la bonne réponse
 
             # 3. Forward pass
             prediction = model.forward(x)
@@ -124,10 +128,21 @@ def train_one_epoch_numpy(model, dataloader, learning_rate):
             # 6. Backward pass (Gradients)
             dkernels, dw_fc, db_fc = model.backward(dloss_dprob)
 
+            # --- CORRECTION : Gradient Clipping ---
+            dkernels = np.clip(dkernels, -1.0, 1.0)
+            dw_fc = np.clip(dw_fc, -1.0, 1.0)
+            db_fc = np.clip(db_fc, -1.0, 1.0)
+
             # 7. Mise à jour des poids manuelle
             model.conv.kernels -= learning_rate * dkernels
             model.fc.weights -= learning_rate * dw_fc
             model.fc.bias -= learning_rate * db_fc
+
+            # --- CORRECTION : Weight Clipping (Garde-fou mathématique) ---
+            
+            model.conv.kernels = np.clip(model.conv.kernels, -0.5, 0.5)
+            model.fc.weights = np.clip(model.fc.weights, -0.5, 0.5)
+            model.fc.bias = np.clip(model.fc.bias, -0.5, 0.5)
 
         running_loss += batch_loss / len(batch_images)
 
@@ -146,8 +161,8 @@ def evaluate_model_numpy(model, dataloader):
             x = batch_images[i].squeeze().numpy()
             label_int = batch_labels[i].item()
 
-            y = np.zeros(10)
-            y[label_int] = 1
+            y = np.full(10, 0.05)  # On met 0.05 partout
+            y[label_int] = 0.95    # On met 0.95 pour la bonne réponse
 
             # Forward pass uniquement
             prediction = model.forward(x)
@@ -169,7 +184,7 @@ def evaluate_model_numpy(model, dataloader):
 
 
 # --- BOUCLE PRINCIPALE ---
-epochs = 5
+epochs = 15
 
 print("Début de l'entraînement sur EMNIST...")
 for epoch in range(epochs):
@@ -178,10 +193,21 @@ for epoch in range(epochs):
     print(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | Val Accuracy: {val_acc:.2f}%")
 
 print("Début du Fine-Tuning sur le dataset personnel...")
+# --- CORRECTION : Réduction drastique du taux d'apprentissage ---
+learning_rate_finetuning = learning_rate / 10 
+
 for epoch in range(epochs):
-    # Entraînement spécifique sur ton dataset perso
-    train_loss = train_one_epoch_numpy(model, perso_loader, learning_rate)
+    # Entraînement spécifique sur ton dataset perso avec le LR réduit
+    train_loss = train_one_epoch_numpy(model, perso_loader, learning_rate_finetuning)
     val_loss, val_acc = evaluate_model_numpy(model, perso_loader)
     print(f"Fine-Tuning Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.4f} | Perso Accuracy: {val_acc:.2f}%")
 
 print("Entraînement terminé !")
+
+print("Sauvegarde des poids du modèle...")
+# Sauvegarde des matrices au format compressé de NumPy
+np.savez("modele_chiffres.npz", 
+         conv_kernels=model.conv.kernels, 
+         fc_weights=model.fc.weights, 
+         fc_bias=model.fc.bias)
+print("Modèle sauvegardé avec succès dans 'modele_chiffres.npz' !")
