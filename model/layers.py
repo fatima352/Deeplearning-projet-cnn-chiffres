@@ -69,6 +69,42 @@ class Conv2D:
         # Retourne les feature maps obtenues
         return output
 
+class MaxPool2D:
+    def __init__(self, pool_size=2):
+        # Taille de la fenêtre de pooling
+        self.pool_size = pool_size
+
+    def forward(self, x):
+        # Dimensions de l'entrée :
+        # nombre de feature maps, hauteur, largeur
+        n_channels, height, width = x.shape
+
+        # Calcul des dimensions de sortie
+        output_height = height // self.pool_size
+        output_width = width // self.pool_size
+
+        # Création de la sortie
+        output = np.zeros(
+            (n_channels, output_height, output_width)
+        )
+
+        # Parcours de chaque feature map
+        for c in range(n_channels):
+            for i in range(output_height):
+                for j in range(output_width):
+
+                    # Extraction de la zone de pooling
+                    region = x[
+                        c,
+                        i * self.pool_size:(i + 1) * self.pool_size,
+                        j * self.pool_size:(j + 1) * self.pool_size
+                    ]
+
+                    # Conservation de la valeur maximale
+                    output[c, i, j] = np.max(region)
+
+        return output
+
 if __name__ == "__main__":
 
     # =========================
@@ -141,3 +177,29 @@ if __name__ == "__main__":
     print("\nSortie :")
     print(output_conv)
     print("Shape sortie :", output_conv.shape)
+
+
+    # =========================
+    # Test MaxPool2D
+    # =========================
+    print("\n=== Test MaxPool2D ===")
+
+    x_pool = np.array([
+        [
+            [1, 5, 2, 3],
+            [3, 2, 8, 1],
+            [4, 2, 3, 7],
+            [6, 1, 2, 4]
+        ]
+    ])
+
+    maxpool = MaxPool2D(pool_size=2)
+    output_pool = maxpool.forward(x_pool)
+
+    print("Entrée :")
+    print(x_pool)
+    print("Shape entrée :", x_pool.shape)
+
+    print("\nSortie :")
+    print(output_pool)
+    print("Shape sortie :", output_pool.shape)
