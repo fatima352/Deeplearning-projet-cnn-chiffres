@@ -20,6 +20,7 @@ import torch.optim as optim
 import numpy as np
 from model.cnn import CNN
 from torch.utils.data import Subset
+import matplotlib.pyplot as plt
 
 np.random.seed(42)
 
@@ -69,8 +70,8 @@ test_subset = Subset(test_data, range(2000))
 
 # DataLoader : regroupe les images par paquet de 64
 # DataLoader basés sur ces sous-ensembles minuscules
-train_loader = DataLoader(train_subset, batch_size=64, shuffle=True)
-test_loader = DataLoader(test_subset, batch_size=64, shuffle=False)
+train_loader = DataLoader(train_subset, batch_size=64, shuffle=True, num_workers=4)
+test_loader = DataLoader(test_subset, batch_size=64, shuffle=True, num_workers=4)
 
 #train_loader = DataLoader(train_data, batch_size=64, shuffle=True)
 #test_loader = DataLoader(test_data, batch_size=64, shuffle=False)
@@ -79,12 +80,17 @@ test_loader = DataLoader(test_subset, batch_size=64, shuffle=False)
 
 # 3. Transformations pour les données personnelles
 # 3. Transformations pour les données personnelles
+# 3. Transformations pour les données personnelles
+# 3. Transformations pour les données personnelles (Version Agressive)
 perso_transform = transforms.Compose([
-    transforms.Grayscale(num_output_channels=1), # Forcer en Noir & Blanc
-    transforms.Resize((28, 28)), # Standardiser la taille pour le modèle
+    transforms.Grayscale(num_output_channels=1),
+    transforms.RandomRotation(degrees=10, fill=255), 
+    # NOUVEAU : scale=(0.85, 1.15) fait grossir ou rétrécir le chiffre de 15% aléatoirement
+    transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), scale=(0.85, 1.15), fill=255), 
+    transforms.Resize((28, 28)),
     transforms.ToTensor(),
-    transforms.Lambda(lambda x: 1.0 - x), # --- CORRECTION : Inversion des couleurs ---
-    transforms.Normalize((0.1307,), (0.3081,)) # Conserver la normalisation EMNIST
+    transforms.Lambda(lambda x: 1.0 - x),
+    transforms.Normalize((0.1307,), (0.3081,))
 ])
 
 # Chargement depuis tes 10 dossiers (0 à 9)
@@ -94,7 +100,7 @@ perso_data = datasets.ImageFolder(
 )
 
 # DataLoader pour le fine-tuning ou l'évaluation
-perso_loader = DataLoader(perso_data, batch_size=32, shuffle=False)
+perso_loader = DataLoader(perso_data, batch_size=32, shuffle=True)
 
 # Initialisation du modèle fait maison (NumPy)
 model = CNN()
@@ -107,28 +113,27 @@ def train_one_epoch_numpy(model, dataloader, learning_rate):
         batch_loss = 0.0
 
         for i in range(len(batch_images)):
-            # 1. Extraction et conversion en NumPy (28x28)
             x = batch_images[i].squeeze().numpy()
             label_int = batch_labels[i].item()
 
-            # 2. Encodage One-Hot pour la Loss
-            y = np.full(10, 0.05)  # On met 0.05 partout
-            y[label_int] = 0.95    # On met 0.95 pour la bonne réponse
+            # 2. Vrai Encodage One-Hot
+            y = np.zeros(10)
+            y[label_int] = 1.0
 
             # 3. Forward pass
             prediction = model.forward(x)
 
-            # 4. Calcul de l'erreur (MSE)
-            loss = np.sum((y - prediction) ** 2)
+            # 4. Calcul de l'erreur (Cross-Entropy)
+            loss = -np.sum(y * np.log(prediction + 1e-9))
             batch_loss += loss
 
-            # 5. Dérivée de l'erreur
-            dloss_dprob = -2 * (y - prediction)
+            # 5. Dérivée combinée (Cross-Entropy + Softmax)
+            dloss_dprob = prediction - y
 
-            # 6. Backward pass (Gradients)
+            # 6. Backward pass
             dkernels, dw_fc, db_fc = model.backward(dloss_dprob)
 
-            # --- CORRECTION : Gradient Clipping ---
+            # --- CORRECTION : Gradient Clipping (Conservé par sécurité) ---
             dkernels = np.clip(dkernels, -1.0, 1.0)
             dw_fc = np.clip(dw_fc, -1.0, 1.0)
             db_fc = np.clip(db_fc, -1.0, 1.0)
@@ -137,12 +142,6 @@ def train_one_epoch_numpy(model, dataloader, learning_rate):
             model.conv.kernels -= learning_rate * dkernels
             model.fc.weights -= learning_rate * dw_fc
             model.fc.bias -= learning_rate * db_fc
-
-            # --- CORRECTION : Weight Clipping (Garde-fou mathématique) ---
-            
-            model.conv.kernels = np.clip(model.conv.kernels, -0.5, 0.5)
-            model.fc.weights = np.clip(model.fc.weights, -0.5, 0.5)
-            model.fc.bias = np.clip(model.fc.bias, -0.5, 0.5)
 
         running_loss += batch_loss / len(batch_images)
 
@@ -161,14 +160,15 @@ def evaluate_model_numpy(model, dataloader):
             x = batch_images[i].squeeze().numpy()
             label_int = batch_labels[i].item()
 
-            y = np.full(10, 0.05)  # On met 0.05 partout
-            y[label_int] = 0.95    # On met 0.95 pour la bonne réponse
+            # Vrai Encodage One-Hot
+            y = np.zeros(10)
+            y[label_int] = 1.0
 
-            # Forward pass uniquement
+            # Forward pass
             prediction = model.forward(x)
 
-            # Loss pour le suivi
-            loss = np.sum((y - prediction) ** 2)
+            # Loss Cross-Entropy
+            loss = -np.sum(y * np.log(prediction + 1e-9))
             batch_loss += loss
 
             # Précision
@@ -182,32 +182,49 @@ def evaluate_model_numpy(model, dataloader):
     accuracy = 100 * correct / total
     return running_loss / len(dataloader), accuracy
 
+# --- PRÉPARATION DE L'ÉVALUATION (IMAGES FIXES) ---
+# On crée une transformation SANS Data Augmentation pour avoir une vraie note d'Accuracy
+perso_test_transform = transforms.Compose([
+    transforms.Grayscale(num_output_channels=1),
+    transforms.Resize((28, 28)),
+    transforms.ToTensor(),
+    transforms.Lambda(lambda x: 1.0 - x), 
+    transforms.Normalize((0.1307,), (0.3081,))
+])
 
-# --- BOUCLE PRINCIPALE ---
-epochs = 15
+# On charge à nouveau les dossiers, mais avec cette transformation fixe
+perso_test_data = datasets.ImageFolder(root='./dataset_perso', transform=perso_test_transform)
+perso_test_loader = DataLoader(perso_test_data, batch_size=32, shuffle=False)
 
-print("Début de l'entraînement sur EMNIST...")
-for epoch in range(epochs):
-    train_loss = train_one_epoch_numpy(model, train_loader, learning_rate)
-    val_loss, val_acc = evaluate_model_numpy(model, test_loader)
-    print(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | Val Accuracy: {val_acc:.2f}%")
 
+# --- CHARGEMENT DU MODÈLE EMNIST DÉJÀ ENTRAÎNÉ ---
+print("Chargement du modèle EMNIST de base...")
+sauvegarde = np.load("modele_emnist_base.npz")
+model.conv.kernels = sauvegarde['conv_kernels']
+model.fc.weights = sauvegarde['fc_weights']
+model.fc.bias = sauvegarde['fc_bias']
+
+
+# --- FINE-TUNING ACCÉLÉRÉ ---
 print("Début du Fine-Tuning sur le dataset personnel...")
-# --- CORRECTION : Réduction drastique du taux d'apprentissage ---
-learning_rate_finetuning = learning_rate / 10 
 
-for epoch in range(epochs):
-    # Entraînement spécifique sur ton dataset perso avec le LR réduit
+epochs_finetuning = 127
+learning_rate_finetuning = learning_rate / 4 # On donne plus de force au modèle
+
+for epoch in range(epochs_finetuning):
+    # 1. On ENTRAÎNE sur perso_loader (les images qui subissent des rotations)
     train_loss = train_one_epoch_numpy(model, perso_loader, learning_rate_finetuning)
-    val_loss, val_acc = evaluate_model_numpy(model, perso_loader)
-    print(f"Fine-Tuning Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.4f} | Perso Accuracy: {val_acc:.2f}%")
+    
+    # 2. On ÉVALUE sur perso_test_loader (les images parfaitement fixes)
+    val_loss, val_acc = evaluate_model_numpy(model, perso_test_loader)
+    
+    print(f"Fine-Tuning Epoch {epoch+1}/{epochs_finetuning} | Train Loss: {train_loss:.4f} | Perso Accuracy: {val_acc:.2f}%")
 
-print("Entraînement terminé !")
 
-print("Sauvegarde des poids du modèle...")
-# Sauvegarde des matrices au format compressé de NumPy
+# --- SAUVEGARDE FINALE ---
+print("Sauvegarde des poids du modèle final...")
 np.savez("modele_chiffres.npz", 
          conv_kernels=model.conv.kernels, 
          fc_weights=model.fc.weights, 
          fc_bias=model.fc.bias)
-print("Modèle sauvegardé avec succès dans 'modele_chiffres.npz' !")
+print("Modèle final sauvegardé avec succès dans 'modele_chiffres.npz' !")

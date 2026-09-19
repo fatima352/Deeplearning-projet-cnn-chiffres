@@ -138,113 +138,17 @@ class MaxPool2D:
                     dx_in[c, i*self.pool_size + max_pos[0], j*self.pool_size + max_pos[1]] = dx[c, i, j]
         return dx_in
 
-class Sigmoid:
+class Softmax:
     def __init__(self):
         pass
 
     def forward(self, x):
-        self.output = 1 / (1 + np.exp(-x))
+        # Le np.max sécurise le calcul pour ne jamais avoir d'overflow
+        exp_x = np.exp(x - np.max(x))
+        self.output = exp_x / np.sum(exp_x)
         return self.output
 
-    def backward(self, dx):
-        return self.output * (1 - self.output) * dx
-
-    
-if __name__ == "__main__":
-
-    # =========================
-    # Test ReLU
-    # =========================
-    print("=== Test ReLU ===")
-
-    x_relu = np.array([
-        [-2, 3, -1],
-        [4, -5, 6]
-    ])
-
-    relu = ReLU()
-    output_relu = relu.forward(x_relu)
-
-    print("Entrée :")
-    print(x_relu)
-
-    print("Sortie ReLU :")
-    print(output_relu)
-
-
-    # =========================
-    # Test Linear
-    # =========================
-    print("\n=== Test Linear ===")
-
-    x_linear = np.array([2.0, 5.0, 1.0])
-
-    linear = Linear(n_inputs=3, n_outputs=2)
-    output_linear = linear.forward(x_linear)
-
-    print("Entrée :", x_linear)
-    print("Shape entrée :", x_linear.shape)
-
-    print("\nPoids :")
-    print(linear.weights)
-    print("Shape poids :", linear.weights.shape)
-
-    print("\nBiais :", linear.bias)
-    print("Shape biais :", linear.bias.shape)
-
-    print("\nSortie :", output_linear)
-    print("Shape sortie :", output_linear.shape)
-
-
-    # =========================
-    # Test Conv2D
-    # =========================
-    print("\n=== Test Conv2D ===")
-
-    x_conv = np.array([
-        [1, 0, 1, 0, 1],
-        [0, 1, 0, 1, 0],
-        [1, 1, 1, 0, 0],
-        [0, 0, 1, 1, 1],
-        [1, 0, 0, 1, 0]
-    ])
-
-    conv = Conv2D(n_filters=2, kernel_size=3)
-
-    output_conv = conv.forward(x_conv)
-
-    print("Entrée :")
-    print(x_conv)
-    print("Shape entrée :", x_conv.shape)
-
-    print("\nShape kernels :", conv.kernels.shape)
-
-    print("\nSortie :")
-    print(output_conv)
-    print("Shape sortie :", output_conv.shape)
-
-
-    # =========================
-    # Test MaxPool2D
-    # =========================
-    print("\n=== Test MaxPool2D ===")
-
-    x_pool = np.array([
-        [
-            [1, 5, 2, 3],
-            [3, 2, 8, 1],
-            [4, 2, 3, 7],
-            [6, 1, 2, 4]
-        ]
-    ])
-
-    maxpool = MaxPool2D(pool_size=2)
-    output_pool = maxpool.forward(x_pool)
-
-    print("Entrée :")
-    print(x_pool)
-    print("Shape entrée :", x_pool.shape)
-
-    print("\nSortie :")
-    print(output_pool)
-    print("Shape sortie :", output_pool.shape)
+    def backward(self, dloss_dprob):
+        # La soustraction (prediction - y) est déjà faite dans train.py.
+        # Cette couche ne fait donc que relayer le gradient mathématique.
+        return dloss_dprob
