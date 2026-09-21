@@ -1,1 +1,4 @@
-.venv/
+venv/
+dataset_perso/chiffres_28x28
+dataset_perso/testset_28x28
+dataset_perso/dataset_augmente
