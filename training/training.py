@@ -89,18 +89,17 @@ perso_transform = transforms.Compose([
     transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), scale=(0.85, 1.15), fill=255), 
     transforms.Resize((28, 28)),
     transforms.ToTensor(),
-    transforms.Lambda(lambda x: 1.0 - x),
     transforms.Normalize((0.1307,), (0.3081,))
 ])
 
 # Chargement depuis tes 10 dossiers (0 à 9)
 perso_data = datasets.ImageFolder(
-    root='./dataset_perso',
+    root='./dataset_perso/dataset_augmente',
     transform=perso_transform
 )
 
 # DataLoader pour le fine-tuning ou l'évaluation
-perso_loader = DataLoader(perso_data, batch_size=32, shuffle=True)
+perso_loader = DataLoader(perso_data, batch_size=32, shuffle=True, num_workers=4)
 
 # Initialisation du modèle fait maison (NumPy)
 model = CNN()
@@ -188,12 +187,14 @@ perso_test_transform = transforms.Compose([
     transforms.Grayscale(num_output_channels=1),
     transforms.Resize((28, 28)),
     transforms.ToTensor(),
-    transforms.Lambda(lambda x: 1.0 - x), 
     transforms.Normalize((0.1307,), (0.3081,))
 ])
 
 # On charge à nouveau les dossiers, mais avec cette transformation fixe
-perso_test_data = datasets.ImageFolder(root='./dataset_perso', transform=perso_test_transform)
+perso_test_data = datasets.ImageFolder(
+    root='./dataset_perso/testset_28x28',
+    transform=perso_test_transform
+)
 perso_test_loader = DataLoader(perso_test_data, batch_size=32, shuffle=False)
 
 
@@ -208,7 +209,7 @@ model.fc.bias = sauvegarde['fc_bias']
 # --- FINE-TUNING ACCÉLÉRÉ ---
 print("Début du Fine-Tuning sur le dataset personnel...")
 
-epochs_finetuning = 127
+epochs_finetuning = 30
 learning_rate_finetuning = learning_rate / 4 # On donne plus de force au modèle
 
 for epoch in range(epochs_finetuning):
