@@ -74,12 +74,12 @@ def process_folder(input_dir, output_dir):
 if __name__ == "__main__":
     # Formater les images d'entraînement
     process_folder(
-        input_dir="../dataset_perso/chiffres_separes",
-        output_dir="../dataset_perso/chiffres_28x28"
+        input_dir="dataset_perso/chiffres_separes",
+        output_dir="dataset_perso/chiffres_28x28"
     )
 
     # Formater aussi le test set pour qu'il soit au format MNIST
     process_folder(
-        input_dir="../dataset_perso/testset_perso",
-        output_dir="../dataset_perso/testset_28x28"
+        input_dir="dataset_perso/testset_perso",
+        output_dir="dataset_perso/testset_28x28"
     )
