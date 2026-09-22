@@ -1,28 +1,79 @@
 # Deeplearning-projet-cnn-chiffres
 
-Ne pas oublier d'activer l'environnement python et d'installer les dépendances nécessaires au bon fonctionnement des scripts. 
+Ce projet a pour objectif de détecter et reconnaître des chiffres manuscrits à l'aide d'un réseau de neurones convolutif (CNN).
 
-# Lancement de l'environnement : 
+Avant d'exécuter les différents scripts du projet, il est nécessaire de créer un environnement virtuel Python et d'installer les dépendances.
 
-python -m venv venv
-source venv/bin/activate
+## Installation
 
+### 1. Créer et activer l'environnement virtuel
 
-# Lancement de l'installation des dependances : 
+Depuis la racine du projet :
 
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 2. Installer les dépendances
+
+```bash
 python -m pip install -r requirements.txt
+```
 
-## Pour la partie augmentation, les fichiers sont trop lourds a déplacer. Je vous demande donc de lancer les scripts dans cet ordre là depuis le dossier scripts: 
+## Préparation et augmentation des données
 
-python3 formater_mnist.py
+Les fichiers générés par l'augmentation des données étant trop volumineux pour être inclus dans le dépôt, ils doivent être générés localement.
 
-python3 augmenter_donnees.py
+Depuis la racine du projet, lancer les scripts dans l'ordre suivant :
 
+```bash
+python3 scripts/formater_mnist.py
+python3 scripts/augmenter_donnees.py
+```
 
-## Pour la partie training
+Ces scripts permettent de préparer les images puis de générer les données augmentées nécessaires à l'entraînement.
 
+## Entraînement du modèle
+
+Pour lancer l'entraînement :
+
+```bash
 python3 training/training.py
+```
 
-L'entrainement sur les données EMNIST est sauvegardé dans modele_emnist_base.npz
+Deux modèles sont sauvegardés au cours du processus :
 
-L'entrainement sur les données personnelles augmentées est sauvegardé dans modele_chiffres_npz
+- `modele_emnist_base.npz` : modèle obtenu après l'entraînement sur les données EMNIST ;
+- `modele_chiffres.npz` : modèle obtenu après l'entraînement sur les données personnelles augmentées.
+
+## Lancement de l'interface Streamlit
+
+L'interface permet d'importer une image contenant un ou plusieurs chiffres manuscrits.
+
+Elle permet ensuite de :
+
+- visualiser l'image importée ;
+- détecter les chiffres présents dans l'image ;
+- visualiser les chiffres extraits ;
+- obtenir la prédiction du CNN pour chaque chiffre ;
+- consulter le niveau de confiance associé à chaque prédiction ;
+- afficher le détail des probabilités pour les chiffres de 0 à 9.
+
+### 1. Activer l'environnement virtuel
+
+Si l'environnement virtuel n'est pas déjà actif :
+
+```bash
+source .venv/bin/activate
+```
+
+### 2. Lancer l'application
+
+Depuis la racine du projet :
+
+```bash
+streamlit run interface/app.py
+```
+
+L'application s'ouvre ensuite dans le navigateur.
