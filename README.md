@@ -17,3 +17,12 @@ python -m pip install -r requirements.txt
 python3 formater_mnist.py
 
 python3 augmenter_donnees.py
+
+
+## Pour la partie training
+
+python3 training/training.py
+
+L'entrainement sur les données EMNIST est sauvegardé dans modele_emnist_base.npz
+
+L'entrainement sur les données personnelles augmentées est sauvegardé dans modele_chiffres_npz
