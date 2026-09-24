@@ -14,6 +14,15 @@ class ReLU:
         return dx * (self.input > 0)
 
 
+class Sigmoid:
+    def forward(self, x):
+        self.output = 1.0 / (1.0 + np.exp(-x))
+        return self.output
+
+    def backward(self, dx):
+        return dx * self.output * (1.0 - self.output)
+
+
 class Linear:
     def __init__(self, n_inputs, n_outputs):
         # Initialisation des poids de la couche

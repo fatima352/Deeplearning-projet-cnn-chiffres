@@ -10,6 +10,15 @@ Avant d'exécuter les différents scripts du projet, il est nécessaire de crée
 
 Depuis la racine du projet :
 
+Sous Windows PowerShell :
+
+```powershell
+py -3.10 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+Sous Linux/macOS :
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
@@ -21,6 +30,12 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
+Vérifier que le bon interpréteur est actif :
+
+```bash
+python -c "import sys; print(sys.executable)"
+```
+
 ## Préparation et augmentation des données
 
 Les fichiers générés par l'augmentation des données étant trop volumineux pour être inclus dans le dépôt, ils doivent être générés localement.
@@ -28,6 +43,7 @@ Les fichiers générés par l'augmentation des données étant trop volumineux p
 Depuis la racine du projet, lancer les scripts dans l'ordre suivant :
 
 ```bash
+python scripts/decoupage_grille.py
 python3 scripts/formater_mnist.py
 python3 scripts/augmenter_donnees.py
 ```
@@ -39,7 +55,7 @@ Ces scripts permettent de préparer les images puis de générer les données au
 Pour lancer l'entraînement :
 
 ```bash
-python3 training/training.py
+python training/training.py
 ```
 
 Deux modèles sont sauvegardés au cours du processus :
@@ -64,6 +80,12 @@ Elle permet ensuite de :
 
 Si l'environnement virtuel n'est pas déjà actif :
 
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Sous Linux/macOS :
+
 ```bash
 source .venv/bin/activate
 ```
@@ -77,3 +99,19 @@ streamlit run interface/app.py
 ```
 
 L'application s'ouvre ensuite dans le navigateur.
+
+## Vérifications
+
+Depuis la racine du projet :
+
+```bash
+python -m compileall -q model backprop training evaluation interface scripts
+python -m model.cnn
+python -m backprop.gradient_check
+python evaluation/evaluate.py
+streamlit run interface/app.py
+```
+
+Le projet implémente actuellement un CNN NumPy, et non un Vision Transformer. La
+détection de plusieurs chiffres repose sur OpenCV et des contours, puis le CNN
+classe chaque chiffre extrait en 10 classes.

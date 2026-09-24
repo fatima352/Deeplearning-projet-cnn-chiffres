@@ -70,8 +70,8 @@ test_subset = Subset(test_data, range(2000))
 
 # DataLoader : regroupe les images par paquet de 64
 # DataLoader basés sur ces sous-ensembles minuscules
-train_loader = DataLoader(train_subset, batch_size=64, shuffle=True, num_workers=4)
-test_loader = DataLoader(test_subset, batch_size=64, shuffle=True, num_workers=4)
+train_loader = DataLoader(train_subset, batch_size=64, shuffle=True, num_workers=0)
+test_loader = DataLoader(test_subset, batch_size=64, shuffle=False, num_workers=0)
 
 #train_loader = DataLoader(train_data, batch_size=64, shuffle=True)
 #test_loader = DataLoader(test_data, batch_size=64, shuffle=False)
@@ -99,7 +99,7 @@ perso_data = datasets.ImageFolder(
 )
 
 # DataLoader pour le fine-tuning ou l'évaluation
-perso_loader = DataLoader(perso_data, batch_size=32, shuffle=True, num_workers=4)
+perso_loader = DataLoader(perso_data, batch_size=32, shuffle=True, num_workers=0)
 
 # Initialisation du modèle fait maison (NumPy)
 model = CNN()

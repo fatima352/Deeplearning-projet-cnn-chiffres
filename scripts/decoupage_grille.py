@@ -2,8 +2,8 @@ import os
 import cv2
 import numpy as np
 
-INPUT_IMAGE = "grilles/Rayan.jpg"
-OUTPUT_DIR = "chiffres_separes"
+INPUT_IMAGE = "dataset_perso/grilles/Rayan.jpg"
+OUTPUT_DIR = "dataset_perso/chiffres_separes"
 AUTHOR = "rayan"
 NB_ROWS = 10
 NB_COLS = 10

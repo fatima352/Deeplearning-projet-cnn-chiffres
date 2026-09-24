@@ -100,11 +100,11 @@ def test_cnn_integration():
 
     def compute_loss():
         prediction = model.forward(x)
-        return np.sum((y - prediction) ** 2)
+        return -np.sum(y * np.log(prediction + 1e-9))
 
     compute_loss()
     prediction = model.forward(x)
-    dloss_dprob = -2 * (y - prediction)
+    dloss_dprob = prediction - y
     dkernels_analytic, dw_fc_analytic, db_fc_analytic = model.backward(dloss_dprob)
 
     dkernels_numeric = numerical_gradient(compute_loss, model.conv.kernels)
